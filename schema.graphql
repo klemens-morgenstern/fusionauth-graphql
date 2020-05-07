@@ -475,7 +475,7 @@ type Query {
     "Search for Users by Id"
     searchUsers(
         "An array of User Ids to delete. The userIds, query, and queryString parameters are mutually exclusive, they are listed here in order of precedence."
-        userIds: UUID,
+        userIds: [UUID!],
         """The raw JSON Elasticsearch query that is used to search for Users. The userIds, query, and queryString parameters are mutually exclusive, they are listed here in order of precedence.
 
         It is necessary to use the query parameter when querying against registrations in order to achieve expected results, as this field is defined as a nested datatype in the Elasticsearch mapping."""
@@ -782,6 +782,29 @@ extend type Query {
     "Retrieve all the Actions for a specific User by the User Id."
     actions("The unique Id of the User for which to retrieve all of the Actions."
         userId: UUID!,
+        """When this parameter is provided and set to true, only active actions will be returned. When this parameter is provided and set to false, only the inactive actions will be returned. When this parameter is omitted, all actions will be returned.
+
+        An active action is a time based action that has not yet expired or been canceled. An inactive action is either a time based action that has expired, canceled or an action that is not time based.
+
+        This parameter and preventingLogin are mutually exclusive."""
+        active: Boolean,
+        """When this value is provided and set to true, only active actions that are preventing the user from login will be returned. Omitting this parameter, or setting this parameter to false does not affect the API behavior.
+
+        This parameter and active are mutually exclusive because an action that is preventing login is always active."""
+        preventingLogin: Boolean,
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "The number of search results to return. Used for pagination."
+        last: Int,
+        "The start row within the search results to return. Used for pagination."
+        offset: Int) : ActionsConnection!
+}
+
+extend type User {
+    "Retrieve all the Actions for a specific User by the User Id."
+    actions(
         """When this parameter is provided and set to true, only active actions will be returned. When this parameter is provided and set to false, only the inactive actions will be returned. When this parameter is omitted, all actions will be returned.
 
         An active action is a time based action that has not yet expired or been canceled. An inactive action is either a time based action that has expired, canceled or an action that is not time based.
@@ -1788,6 +1811,20 @@ extend type Query {
         offset: Int) : UserConsentsConnection!
 }
 
+extend type User {
+    userConsents(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int) : UserConsentsConnection!
+}
+
 input LocalizedStringInput {
     locale: Locale
     template: String
@@ -1950,6 +1987,7 @@ type TemplateError {
 
 type SentEmails {
     userId: UUID!
+    user: User
     parseErrors: [TemplateError!]
     renderErrors: [TemplateError!]
 }
@@ -1971,9 +2009,17 @@ extend type Query {
     ): EmailTemplatesConnection!
     "This API is used to preview an Email Template. You simply pass all of the information for the Email Template in the request and rendered version of the Email is sent back to you in the response. The Email Template in the request does not need to be completely filled out either. You can send in a partial Email Template and the response will contain only what you provided."
     previewEmailTemplate(template : EmailTemplatePreviewInput) : EmailTemplatePreview
+}
+
+extend type EmailTemplate {
+    previewEmailTemplate: EmailTemplatePreview
+}
+
+extend type Mutation
+{
     "This API is used to send an Email to one or more users using an Email Template."
     sendEmails(emailTemplateId: UUID!,
-        bccAddresses: [String!], ccAddresses: [String!],
+                bccAddresses: [String!], ccAddresses: [String!],
                requestData: JSON, userIds: [UUID!]!) : SentEmails
 }
 
@@ -2067,6 +2113,8 @@ type Family {
 
     "The members of this family."
     members: [FamilyMember!]!
+
+    pendingMembers : [User!]
 }
 
 extend type Mutation {
@@ -2087,6 +2135,9 @@ extend type Mutation {
 extend type Query {
     family(familyId: UUID) : Family
     pendingFamilyMembers(parentEmail: String!) : [User!]
+}
+
+extend type Mutation {
     requestParentalApproval(parentEmail: String!): Boolean
 }
 
@@ -3363,9 +3414,7 @@ type RefreshToken {
 }
 
 
-
-
-extend type Query {
+extend type Mutation {
     """This API is used to issue a new access token (JWT) using an existing access token (JWT).
 
     This API provides the single signon mechanism for access tokens. For example you have an access token for application A and you need an access token for application B. You may use this API to request an access token to application B with the authorized token to application A. The returned access token will have the same expiration of the one provided.
@@ -3391,6 +3440,20 @@ extend type Query {
         ipAddress: String,
         metaData: MetaDataInput) : ReconciledJwt
 
+    refreshJwt(
+        "The refresh token to be used to obtain a new access token."
+        refreshToken: String,
+        "The previously issued encoded access token. When provided on the request, this value will be relayed in the related JWT Refresh webhook event within the original field."
+        token: String) : String
+
+    refreshToken: [RefreshToken!]
+
+    validateJwt(token: String) : JSON
+}
+
+extend type Query {
+
+
     publicKey(kid: String!) : PublicKey
     publicKeyByApp(
         """The Application Id is used to retrieve a specific Public Key. This will return the Public Key that has been specifically configured for the provided Application to sign the access token.
@@ -3412,16 +3475,11 @@ extend type Query {
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
     ): PublicKeysConnection!
+}
 
-    refreshJwt(
-        "The refresh token to be used to obtain a new access token."
-        refreshToken: String,
-        "The previously issued encoded access token. When provided on the request, this value will be relayed in the related JWT Refresh webhook event within the original field."
-        token: String) : String
-
-    refreshToken: [RefreshToken!]
-
-    validateJwt(token: String) : JSON
+extend type Application
+{
+    publicKey: PublicKey
 }
 
 extend type Mutation {
@@ -3984,13 +4042,51 @@ extend type Query {
     ): SearchLoginRecordsConnection!
 }
 
+extend type User {
+    "Reads and enables pagination through a set of `Theme`."
+    searchLoginRecords(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "A condition to be used in determining which values should be returned by the collection."
+        condition: SearchLoginRecordsCondition,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int,
+        "The method to use when ordering `Theme`."
+        orderBy: [SearchLoginRecordsOrderBy!]
+    ): SearchLoginRecordsConnection!
+}
+
+extend type Application {
+    "Reads and enables pagination through a set of `Theme`."
+    searchLoginRecords(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "A condition to be used in determining which values should be returned by the collection."
+        condition: SearchLoginRecordsCondition,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int,
+        "The method to use when ordering `Theme`."
+        orderBy: [SearchLoginRecordsOrderBy!]
+    ): SearchLoginRecordsConnection!
+}
+
+
 type Passwordless {
     "The unique code used to complete the login request."
     code: String
 }
-
-
-
 
 extend type Mutation {
     "Generate a passwordless login code"
@@ -4117,6 +4213,8 @@ extend type Mutation {
 
 extend type Query {
     registration(applicationId: UUID!, userId:UUID!) : RegistrationResponse
+}
+extend type Mutation {
     deleteRegistration(applicationId: UUID!, userId:UUID!) : Boolean
 
     verifyRegistration(
@@ -4127,6 +4225,15 @@ extend type Query {
         "The unique Id of the Application for this User registration."
         applicationId: UUID!,
 
+        "The email address used to uniquely identify the User."
+        email: String!,
+
+        "If you would only like to generate a new verificationId and return it in the JSON body without FusionAuth attempting to send the User an email set this optional parameter to false."
+        sendVerifyRegistrationEmail: Boolean): String
+}
+
+extend type Application {
+    resendVerificationEmail(
         "The email address used to uniquely identify the User."
         email: String!,
 
@@ -4261,6 +4368,123 @@ extend type Query {
     ) : ActiveUsersConnection!
 
     reportTotals: Totals
+}
+
+extend type Application {
+    dailyActiveUsers(
+        "The end of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)."
+        end: Int,
+        "The start of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)"
+        start: Int,
+
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int
+    ) : ActiveUsersConnection!
+
+    hourlyActiveUsers(
+        "The end of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)."
+        end: Int,
+        "The start of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)"
+        start: Int,
+
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int,
+
+        """When this parameter is provided it will reduce the scope of the report to a single user with the requested email or username specified by this parameter.
+
+        This parameter is mutually exclusive with userId, if both are provided, the loginId will take precedence."""
+        loginId: UUID,
+
+        """When this parameter is provided it will reduce the scope of the report to a single user with the requested unique Id.
+
+        This parameter is mutually exclusive with loginId, if both are provided, the loginId will take precedence."""
+        userId: UUID
+    ) : ActiveUsersConnection!
+
+    monthlyActiveUsers(
+
+        "The end of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)."
+        end: Int,
+        "The start of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)"
+        start: Int,
+
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int,
+    ) : ActiveUsersConnection!
+}
+
+extend type Login {
+
+    hourlyActivity(
+        "A specific application to query for. If not provided a \"Global\" (across all applications) daily active users report will be returned."
+        applicationId: UUID,
+
+        "The end of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)."
+        end: Int,
+        "The start of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)"
+        start: Int,
+
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int
+    ) : ActiveUsersConnection!
+
+}
+
+extend type User {
+
+    hourlyActivity(
+        "A specific application to query for. If not provided a \"Global\" (across all applications) daily active users report will be returned."
+        applicationId: UUID,
+
+        "The end of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)."
+        end: Int,
+        "The start of the query range. This is an instant but it is truncated to days in the report timezone (which is set in the system settings)"
+        start: Int,
+
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int
+    ) : ActiveUsersConnection!
+
 }
 
 enum HttpMethod {GET POST PUT DELETE HEAD OPTIONS}
@@ -4441,10 +4665,6 @@ type PasswordValidationRules {
 
     "Indicates that passwords require at least one number to be valid."
     requireNumber: Boolean!
-}
-
-extend type Query {
-    tentantPasswordValidationRules(tenantId: UUID!) : PasswordValidationRules
 }
 
 input EmailConfigurationInput {
@@ -5080,6 +5300,7 @@ extend type Query {
     tenantPasswordValidationRules(tenantId: UUID!): PasswordValidationRules
 }
 
+
 input TemplatesInput {
     "A FreeMarker template that is rendered when the user requests the /email/complete page. This page is used after a user has verified their email address by clicking the URL in the email. After FusionAuth has updated their user object to indicate that their email was verified, the browser is redirected to this page."
     emailComplete: String
@@ -5420,7 +5641,7 @@ type UserCommentsConnection {
 }
 
 extend type Query {
-    userComment("The Id of the User to retrieve the User Comments for." userId: UUID!,
+    userComments("The Id of the User to retrieve the User Comments for." userId: UUID!,
 
         "Read all values in the set after (below) this cursor."
         after: Cursor,
@@ -5434,6 +5655,19 @@ extend type Query {
         offset: Int) : UserCommentsConnection!
 }
 
+extend type User {
+    comments(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int) : UserCommentsConnection!
+}
 
 input HeaderEntryInput {key: String!, value: String!}
 
@@ -5734,13 +5968,12 @@ type UserActionsConnection {
 extend type Query {
     userAction(userActionId: UUID!) : UserAction
 
-    "Reads and enables pagination through a set of `Collaborator`."
+    "Reads and enables pagination through a set of `UserAction`."
     userActions(
         "Read all values in the set after (below) this cursor."
         after: Cursor,
         "Read all values in the set before (above) this cursor."
         before: Cursor,
-
         "Only read the first `n` values of the set."
         first: Int,
         "Only read the last `n` values of the set."
