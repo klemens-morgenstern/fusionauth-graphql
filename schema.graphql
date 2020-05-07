@@ -169,7 +169,7 @@ type TokenPair {
     token: String!
 }
 
-type MemberShip {
+type UserMemberShip {
     "An object that can hold any information about the User for this membership that should be persisted."
     data: JSON
     "The Id of the Group of this membership."
@@ -178,13 +178,16 @@ type MemberShip {
     id: UUID
     "The instant that the membership was created."
     insertInstant: Int
+
+    group: Group
 }
 
-type Registration {
+type UserRegistration {
     "The Id of the Application that this registration is for."
     applicationId: UUID!
     "The Authentication Token for this registration (if one exists)."
     authenticationToken: String
+
     "This Id is used by FusionAuth when the User’s username for this registration is sent to CleanSpeak to be moderated (filtered and potentially sent to the approval queue). It is the content Id of the username inside CleanSpeak."
     cleanSpeakId: UUID
     "An object that can hold any information about the User for this registration that should be persisted."
@@ -198,7 +201,9 @@ type Registration {
     "An array of locale strings that give, in order, the User’s preferred languages for this registration. These are important for email templates and other localizable text."
     preferredLanguages: [Locale!]!
     "The list of roles that the User has for this registration."
-    roles: [String!]!
+    roleNames : [String!]
+    roles: [Role!]!
+
     "The User’s preferred timezone for this registration. The string will be in an IANA time zone format."
     timezone: Timezone!
     """A map that contains tokens returned from identity providers.
@@ -217,6 +222,9 @@ type Registration {
     usernameStatus: UsernameStatus!
     "This value indicates if this User’s registration has been verified."
     verified: Boolean
+
+    application: Application
+
 }
 
 type User {
@@ -226,6 +234,7 @@ type User {
     birthDate: Date!
     "This Id is used by FusionAuth when the User’s username is sent to CleanSpeak to be moderated (filtered and potentially sent to the approval queue). It is the content Id of the username inside CleanSpeak."
     cleanSpeakId: UUID
+
     "An object that can hold any information about the User that should be persisted."
     data: JSON!
     "The User’s email address."
@@ -248,7 +257,7 @@ type User {
     "The User’s last name."
     lastName: String!
     "The list of memberships for the User."
-    memberships: [MemberShip!]
+    memberships: [UserMemberShip!]
     "The User’s middle name."
     middleName: String!
     "The User’s mobile phone number. This is useful is you will be sending push notifications or SMS messages to the User."
@@ -262,9 +271,11 @@ type User {
     "An array of locale strings that give, in order, the User’s preferred languages. These are important for email templates and other localizable text."
     preferredLanguages:  [Locale!]!
     "The list of registrations for the User."
-    registrations: [Registration!]
+    registrations: [UserRegistration!]
     "The Id of the Tenant that this User belongs to."
     tenantId: UUID!
+
+    tenant: Tenant
     "The User’s preferred timezone. This can be used as a default to display instants, and it is recommended that you allow User’s to change this per-session. The string will be in an IANA time zone format."
     timezone: Timezone!
     """The User’s preferred delivery for verification codes during a two factor login request.
@@ -308,6 +319,17 @@ type UserDeletionResponse {
 
     "The list of affected User Ids. This field is omitted from the response when no users were affected by the request."
     userIds: [UUID!]!
+    users(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int): UsersConnection
 }
 
 input ImportUsersInput {
@@ -330,6 +352,7 @@ input ImportUsersInput {
     "The list of Users to import."
     users : [UserInput!]!
 }
+
 enum SortFieldMissing {
     "When the field is not defined sort this record first." FIRST,
     "When the field is not defined sort this record last." LAST
@@ -368,18 +391,18 @@ input SortField {
 
 
 "A `Login` edge in the connection."
-type SearchUsersEdge {
+type UsersEdge {
     "A cursor for use in pagination."
     cursor: Cursor
     "The `Login` at the end of the edge."
-    node: Login
+    node: User
 }
 
 "A connection to a list of `Login` values."
-type SearchUsersConnection {
+type UsersConnection {
     "A list of edges which contains the `Information` and cursor to aid in pagination."
-    edges: [SearchUsersEdge!]!
-    "A list of `v` objects."
+    edges: [UsersEdge!]!
+    "A list of `User` objects."
     nodes: [User]!
     "Information to aid in pagination."
     pageInfo: PageInfo!
@@ -393,6 +416,7 @@ type Login {
     applicationId: UUID
     "The name of the application at the time this record was created."
     applicationName: String!
+    application: Application
 
     "The instant this login occurred."
     instant: Int!
@@ -405,6 +429,7 @@ type Login {
 
     "The unique Id of the user that is represented by this login record."
     userId:  UUID!
+    user: User
 
 }
 
@@ -467,7 +492,7 @@ type Query {
         offset: Int,
         "An array of sort fields used to sort the result. The order the sort fields are provided will be maintained in the sorted output."
         sortFields: [SortField!]
-        ) : SearchUsersConnection
+        ) : UsersConnection!
     "Retrieve recent logins"
     recentLogins(
         "Read all values in the set after (below) this cursor."
@@ -480,7 +505,7 @@ type Query {
         offset: Int,
         "This parameter will narrow the results to only logins for a particular user. When this parameter is omitted, the most recent logins for all of FusionAuth will be returned."
         userId: UUID
-    ) : LoginsConnection
+    ) : LoginsConnection!
 }
 
 extend type User {
@@ -493,7 +518,7 @@ extend type User {
         "Defaults to 10. This parameter indicates the maximum amount of logins to return for a single request."
         last: Int,
         "Defaults to 0. This parameter provides the offset into the result set. Generally speaking if you wish to paginate the results, you will increment this parameter on subsequent API request by the size of the limit parameter."
-        offset: Int) : LoginsConnection
+        offset: Int) : LoginsConnection!
 }
 
 
@@ -620,6 +645,8 @@ type ActionHistory {
     "The Id of the User that took the modified (or created) the User Action."
     actionerUserId: UUID!
 
+    user: User
+
     "An optional comment provided when the Action was created, updated or canceled."
     comment: String
 
@@ -634,9 +661,11 @@ type ActionHistory {
 type Action {
     "The Id of the User that was actioned."
     actioneeUserId: UUID!
+    actioneeUser: User
 
     "The Id of the User that took the action on the User. If the action was initiated by FusionAuth this value will not be provided."
     actionerUserId: UUID!
+    actionerUser: User
 
     "This parameter if provided specifies the scope of the User  When an Action is scoped to one or more Applications the Application Ids will be provided in this parameter."
     applicationIds: [UUID!]
@@ -680,8 +709,9 @@ type Action {
     "The User Action Reason code that was selected by the actioner."
     reasonCode: String
 
-    "The unique Id of the User  This Id can be used to retrieve the User Action using the Retrieve a User Action API."
+    "The unique Id of the User Action This Id can be used to retrieve the User Action using the Retrieve a User Action API."
     userActionId: UUID!
+    userAction: UserAction
 }
 
 input UpdateAction {
@@ -854,15 +884,8 @@ input OAuthConfigurationInput {
      * com.myApp://redirect
      * com.myApp:/redirect
 
-       
-
-
-       You may now use URLs that do not begin with http to support native application redirect. Prior to this version the value will be validated to begin with http.
-
-       
-
-
-       You may now use URLs for application redirects that use a single slash to denote there is no naming authority for the scheme. Prior to this version a URL such as com.myApp:/redirect would fail validation as in invalid URL.
+        You may now use URLs that do not begin with http to support native application redirect. Prior to this version the value will be validated to begin with http.
+        You may now use URLs for application redirects that use a single slash to denote there is no naming authority for the scheme. Prior to this version a URL such as com.myApp:/redirect would fail validation as in invalid URL.
 """
     authorizedRedirectURLs : [String!]
 
@@ -1056,12 +1079,14 @@ type CleanSpeakConfigurationUsernameModeration {
 type JwtConfiguration {
     "The Id of the signing key used to sign the access token."
     accessTokenId: UUID!
+    accessToken: Key
 
     "Defaults to false. Indicates if this application is using the JWT configuration defined here or the global JWT configuration defined by the System Configuration. If this is false the signing algorithm configured in the System Configuration will be used. If true the signing algorithm defined in this application will be used."
     enabled: Boolean!
 
     "The Id of the signing key used to sign the Id token."
     idTokenKeyId: UUID!
+    idTokenKey: Key
 
     "The length of time in minutes the JWT refresh token will live before it is expired and is not able to be exchanged for a JWT. Required when enabled is set to true."
     refreshTokenTimeToLiveInMinutes: Int!
@@ -1075,12 +1100,15 @@ type LambdaConfiguration {
 
     "The Id of the Lambda that will be invoked when an access token is generated for this application. This will be utilized during OAuth2 and OpenID Connect authentication requests as well as when an access token is generated for the Login API."
     accessTokenPopulateId: UUID!
+    accessTokenPopulate: Lambda
 
     "The Id of the Lambda that will be invoked when an Id token is generated for this application during an OpenID Connect authentication request."
     idTokenPopulateId: UUID!
+    idTokenPopulate: Lambda
 
     "The Id of the Lambda that will be invoked when a a SAML response is generated during a SAML authentication request."
     samlv2PopulateId: UUID!
+    samlv2Populate: Lambda
 }
 
 type LoginConfiguration {
@@ -1113,14 +1141,7 @@ type OAuthConfiguration {
     * com.myApp://redirect
     * com.myApp:/redirect
 
-    
-
-
     You may now use URLs that do not begin with http to support native application redirect. Prior to this version the value will be validated to begin with http.
-
-    
-
-
     You may now use URLs for application redirects that use a single slash to denote there is no naming authority for the scheme. Prior to this version a URL such as com.myApp:/redirect would fail validation as in invalid URL.
     """
     authorizedRedirectURLs : [String!]!
@@ -1167,6 +1188,17 @@ type CleanSpeakConfiguration
 
     This property is used when CleanSpeak sends user action notifications to FusionAuth (when users are disciplined for example). FusionAuth will translate the CleanSpeak ids to FusionAuth ids and then apply the user action."""
     applicationIds : [UUID]
+    applications(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int) : ApplicationsConnection
 
     "True if CleanSpeak integration is enabled. This setting is global and is not modifiable using this API."
     enabled: Boolean!
@@ -1253,6 +1285,7 @@ type Samlv2Configuration {
 
     "Defaults to a new key. The id of the Key used to sign the SAML response. If you do not specify this property, FusionAuth will create a new key and associate it with this Application."
     keyId: UUID!
+    key: Key
 
     "Defaults to the system logout URL or /. The URL that the browser is taken to after the user logs out of the SAML service provider. Often service providers need this URL in order to correctly hook up single-logout. Note that FusionAuth does not support the SAML single-logout profile because most service providers to not support it properly."
     logoutURL: String!
@@ -1299,6 +1332,7 @@ type Application {
 
     "The Id of the Email Template that is used to send the Registration Verification emails to users. If the verifyRegistration field is true this field is required."
     verificationEmailTemplateId: UUID!
+    verificationEmailTemplate: EmailTemplate
 
     "Defaults to false. Whether or not registrations to this Application may be verified. When this is set to true the verificationEmailTemplateId parameter is also required."
     verifyRegistration : Boolean!
@@ -1375,7 +1409,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int,
-    ) : ApplicationsConnection
+    ) : ApplicationsConnection!
 
     application(applicationId: UUID!) : Application
     applicationOAuthConfiguration(applicationId: UUID!): OAuthConfiguration
@@ -1482,7 +1516,7 @@ extend type Query {
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int,
         "The database column to order the search results on plus the order direction."
-        orderBy: OrderLogsBy) : AuditLogsConnection
+        orderBy: OrderLogsBy) : AuditLogsConnection!
 }
 
 input ConsentEMailPlusInput {
@@ -1556,6 +1590,7 @@ type ConsentEMailPlus {
 
     "The Id of the Email Template that is used to send the reminder notice to the consent giver. This value is required when emailPlus.enabled is set to true."
     emailTemplateId: UUID!
+    emailTemplate: EmailTemplate
 
     "Defaults to 48. The maximum number of hours to wait until sending the reminder notice the consent giver."
     maximumTimeToSendEmailInHours: Int!
@@ -1572,6 +1607,7 @@ type ConsentMininumAgeByLocale{
 type Consent {
     "The Id of the Email Template that is used to send confirmation to the end user. If this value is omitted an email will not be sent to the user."
     consentEmailTemplateId: UUID!
+    consentEmailTemplate: EmailTemplate
     """
     The Id of the Email Template that is used to send confirmation to the end user. If this value is omitted an email will not be sent to the user.
 
@@ -1651,7 +1687,7 @@ extend type Query {
         "Only read the last `n` values of the set."
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
-        offset: Int) : ConsentsConnection
+        offset: Int) : ConsentsConnection!
 }
 
 input UserConsentInput {
@@ -1680,6 +1716,7 @@ type UserConsent {
 
     "The Id of the User giving consent. When providing self-consent the giverUserId will be the same as the userId."
     giverUserId: UUID!
+    giverUser: User
 
     "The unique Id of the User consent."
     id: UUID!
@@ -1696,6 +1733,7 @@ type UserConsent {
 
     "The Id of the User receiving consent. When providing self-consent the giverUserId will be the same as the userId."
     userId: UUID!
+    user: User
 
     "The consent values to be associated with this User consent."
     values: [String!]!
@@ -1747,7 +1785,7 @@ extend type Query {
         "Only read the last `n` values of the set."
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
-        offset: Int) : UserConsentsConnection
+        offset: Int) : UserConsentsConnection!
 }
 
 input LocalizedStringInput {
@@ -1930,7 +1968,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int,
-    ): EmailTemplatesConnection
+    ): EmailTemplatesConnection!
     "This API is used to preview an Email Template. You simply pass all of the information for the Email Template in the request and rendered version of the Email is sent back to you in the response. The Email Template in the request does not need to be completely filled out either. You can send in a partial Email Template and the response will contain only what you provided."
     previewEmailTemplate(template : EmailTemplatePreviewInput) : EmailTemplatePreview
     "This API is used to send an Email to one or more users using an Email Template."
@@ -1991,7 +2029,7 @@ extend type Query {
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int,
         "The database column to order the search results on plus the order direction."
-        orderBy: OrderLogsBy) : EventLogsConnection
+        orderBy: OrderLogsBy) : EventLogsConnection!
 }
 
 enum FamilyRole {ADULT, CHILD, TEEN}
@@ -2011,6 +2049,7 @@ input FamilyMemberInput {
 type FamilyMember {
     "The unique userId of the User to add to a family."
     userId: UUID!
+    user: User
 
     "True if this user is the owner of the family, the first Adult user in the family will automatically be set as the owner. A teen or child cannot be the family owner."
     owner: Boolean!
@@ -2107,10 +2146,12 @@ type GroupMembership {
 
     "The User Id to add as a Member of this Group."
     userId: UUID!
+    user: User
 }
 
 type GroupMemberships {
     groupId: UUID!
+    group: Group
     members: [GroupMembership!]!
 }
 
@@ -2198,7 +2239,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int,
-    ): IdentityProvidersConnection
+    ): IdentityProvidersConnection!
 
     identityProviderByDomain(domain: String!): IdentityProvider
     identityProviderByType  (type:   String!): IdentityProvider
@@ -2296,6 +2337,7 @@ type FacebookApplicationConfiguration {
 
 type FacebookApplicationConfigurations {
     applicationId: UUID!
+    application: Application
     config: FacebookApplicationConfiguration!
 }
 
@@ -2569,6 +2611,7 @@ type HyprIdentityProviderConfig
 
 type HyprIdentityProviderConfigs {
     applicationId: UUID!
+    application: Application
     googleIdentityProviderConfig: HyprIdentityProviderConfig!
 }
 
@@ -2688,6 +2731,7 @@ type TwitterIdentityProviderConfig
 
 type TwitterIdentityProviderConfigs {
     applicationId: UUID!
+    application: Application
     twitterIdentityProviderConfig: TwitterIdentityProviderConfig!
 }
 
@@ -2856,6 +2900,7 @@ type OpenIDIdentityProviderConfig
 
 type OpenIDIdentityProviderConfigs {
     applicationId: UUID!
+    application: Application
     openIDIdentityProviderConfig: OpenIDIdentityProviderConfig!
 }
 
@@ -3020,6 +3065,7 @@ type ExternalJWTIdentityProviderConfig
 
 type ExternalJWTIdentityProviderConfigs {
     applicationId: UUID!
+    application: Application
     externalJWTIdentityProviderConfig: ExternalJWTIdentityProviderConfig!
 }
 
@@ -3086,7 +3132,7 @@ extend type Query { externalJWTIdentityProvider : ExternalJWTIdentityProvider }
 type CleanSpeakIntegrationUsernameModeration {
     "The Id of the CleanSpeak Application where usernames are sent for moderation."
     applicationId: UUID!
-
+    application: Application
     "True if CleanSpeak username moderation is enabled."
     enabled: Boolean!
 }
@@ -3304,6 +3350,7 @@ type MetaData {
 type RefreshToken {
     "The Id of the Application for which this token is authorized to be exchanged for a new Access Token."
     applicationId: UUID!
+    application: Application
     "The instant this Refresh Token was issued."
     insertInstant: Int!
 
@@ -3364,7 +3411,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
-    ): PublicKeysConnection
+    ): PublicKeysConnection!
 
     refreshJwt(
         "The refresh token to be used to obtain a new access token."
@@ -3605,7 +3652,7 @@ extend type Query {
         offset: Int,
         "The method to use when ordering `Key`."
         orderBy: [KeysOrderBy!]
-        ) : KeysConnection
+        ) : KeysConnection!
 }
 
 input KeyImportInput {
@@ -3748,7 +3795,7 @@ extend type Mutation {
         offset: Int,
         "The method to use when ordering `Lambda`."
         orderBy: [LambdasOrderBy!]
-    ): LambdasConnection
+    ): LambdasConnection!
 
     updateLambda(
         "This API is used to update an existing Lambda. The lambda type may not be changed."
@@ -3934,7 +3981,7 @@ extend type Query {
         offset: Int,
         "The method to use when ordering `Theme`."
         orderBy: [SearchLoginRecordsOrderBy!]
-    ): SearchLoginRecordsConnection
+    ): SearchLoginRecordsConnection!
 }
 
 type Passwordless {
@@ -4018,7 +4065,7 @@ input RegistrationInput {
 }
 
 type RegistrationResponse {
-    registration: Registration!
+    registration: UserRegistration!
 
     "The access token, this string is an encoded JSON Web Token (JWT)."
     token: String!
@@ -4130,6 +4177,7 @@ type ApplicationTotal {
 type Totals {
     "A map where the key is the Id of the Application and the value is an object that contains the totals for that Application."
     applicationTotals: ApplicationTotal!
+    application: Application
 
     "The current number of registered users. This value is incremented each time a new user is added to FusionAuth, and this value is decremented when a user is deleted from FusionAuth."
     globalRegistrations: Int
@@ -4158,7 +4206,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
-    ) : ActiveUsersConnection
+    ) : ActiveUsersConnection!
 
     hourlyActiveUsers(
         "A specific application to query for. If not provided a \"Global\" (across all applications) daily active users report will be returned."
@@ -4189,7 +4237,7 @@ extend type Query {
 
         This parameter is mutually exclusive with loginId, if both are provided, the loginId will take precedence."""
         userId: UUID
-    ) : ActiveUsersConnection
+    ) : ActiveUsersConnection!
 
     monthlyActiveUsers(
         "A specific application to query for. If not provided a \"Global\" (across all applications) daily active users report will be returned."
@@ -4210,7 +4258,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int,
-    ) : ActiveUsersConnection
+    ) : ActiveUsersConnection!
 
     reportTotals: Totals
 }
@@ -4695,12 +4743,16 @@ type EmailConfiguration {
     defaultFromName: String!
     "The Id of the Email Template that is used when a user is sent a forgot password email."
     forgotPasswordEmailTemplateId: UUID!
+    forgotPasswordEmailTemplate: EmailTemplate
+
     "The host name of the SMTP server that FusionAuth will use."
     host: String!
     "An optional password FusionAuth will use to authenticate with the SMTP server."
     password: String!
     "The Id of the Passwordless Email Template."
-    passwordlessEmailTemplateId: UUID!
+    passwordlessEmailTemplateId: UUID
+    passwordlessEmailTemplate: EmailTemplate
+    !
     "The port of the SMTP server that FusionAuth will use."
     port: Int!
     "Additional Email Configuration in a properties file formatted String."
@@ -4716,10 +4768,14 @@ type EmailConfiguration {
 
     "The Id of the Email Template that is used when a user had their account created for them and they must set their password manually and they are sent an email to set their password."
     setPasswordEmailTemplateId: UUID!
+    setPasswordEmailTemplate: EmailTemplate
+
     "An optional username FusionAuth will to authenticate with the SMTP server."
     username: String!
     "The If of the Email Template that is used to send the verification emails to users. These emails are used to verify that a user’s email address is valid. If either the verifyEmail or verifyEmailWhenChanged fields are true this field is required."
     verificationEmailTemplateId: UUID!
+    verificationEmailTemplate: EmailTemplate
+
     "Defaults to false. Whether the user’s email addresses are verified when the registers with your application."
     verifyEmail: Boolean!
     "Defaults to false. Whether the user’s email addresses are verified when the user changes them."
@@ -4849,7 +4905,7 @@ type FailedAuthenticationConfiguration {
 
     "The Id of the User Action that is applied when the threshold is reached for too many failed authentication attempts."
     userActionId: UUID
-
+    userAction: UserAction
 }
 
 type FamilyConfiguration {
@@ -4857,6 +4913,8 @@ type FamilyConfiguration {
     allowChildRegistrations: Boolean
     "The unique Id of the email template to use when confirming a child."
     confirmChildEmailTemplateId: UUID
+    confirmChildEmailTemplate: EmailTemplate
+
     "Defaults to false. Indicates that child users without parental verification will be permanently deleted after tenant.familyConfiguration.deleteOrphanedAccountsDays days."
     deleteOrphanedAccounts: Boolean
     " Defaults to 30. The number of days from creation child users will be retained before being deleted for not completing parental verification. Value must be greater than 0."
@@ -4865,6 +4923,7 @@ type FamilyConfiguration {
     enabled: Boolean
     "Defaults to false. The unique Id of the email template to use when a family request is made."
     familyRequestEmailTemplateId: UUID
+    familyRequestEmailTemplate: EmailTemplate
     " Defaults to 12. The maximum age of a child. Value must be greater than 0."
     maximumChildAge: Int
     "The minimum age to be an owner. Value must be greater than 0."
@@ -4873,6 +4932,7 @@ type FamilyConfiguration {
     parentEmailRequired: Boolean
     "The unique Id of the email template to use for parent registration."
     parentRegistrationEmailTemplateId: UUID
+    parentRegistrationEmailTemplate: EmailTemplate
 }
 
 type PasswordEncryptionConfiguration {
@@ -4913,6 +4973,7 @@ type BreachDetection
 
     "The Id of the email template to use when notifying user of breached password. Required if onLogin is set to NotifyUser."
     notifyUserEmailTemplateId: UUID
+    notifyUserEmailTemplate: EmailTemplate
 
     "The behavior when detecting breaches at time of user login."
     onLogin: BreachDetectionBehavior
@@ -4958,6 +5019,7 @@ type Tenant {
 
     "The unique Id of the theme to be used to style the login page and other end user templates."
     themeId: UUID!
+    theme: Theme
     userDeletePolicy: RegistrationDeletePolicyUnverified
 }
 
@@ -5013,7 +5075,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
-    ): TenantsConnection
+    ): TenantsConnection!
 
     tenantPasswordValidationRules(tenantId: UUID!): PasswordValidationRules
 }
@@ -5179,7 +5241,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
-    ): ThemesConnection
+    ): ThemesConnection!
 }
 
 extend type Mutation {
@@ -5301,7 +5363,7 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
-    ): UserActionReasonsConnection
+    ): UserActionReasonsConnection!
 }
 
 input UserCommentInput {
@@ -5321,7 +5383,7 @@ type UserComment {
 
     "The Id of the User that wrote the User Comment."
     commenterId: UUID!
-
+    commenter: User
     "The instant when the comment was written."
     createInstant: Int!
 
@@ -5330,6 +5392,7 @@ type UserComment {
 
     "The Id of the User that the User Comment was written for."
     userId: UUID!
+    user: User
 }
 
 extend type Mutation {
@@ -5368,7 +5431,7 @@ extend type Query {
         "Only read the last `n` values of the set."
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
-        offset: Int) : UserCommentsConnection
+        offset: Int) : UserCommentsConnection!
 }
 
 
@@ -5419,7 +5482,17 @@ type Webhook
 
     "The Ids of the Applications that this Webhook should be associated with. If no Ids are specified and the global field is false, this Webhook will not be used."
     applicationIds: [UUID]
-
+    applications(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int) : ApplicationsConnection
     "The connection timeout in milliseconds used when FusionAuth sends events to the Webhook."
     connectTimeout: Int!
 
@@ -5497,5 +5570,182 @@ extend type Query {
         last: Int,
         "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
         offset: Int
-    ): WebhooksConnection
+    ): WebhooksConnection!
+}
+
+input UserActionOptionInput {
+    "A mapping of localized names for this User Action Option. The key is the Locale and the value is the name of the User Action Option for that language."
+    localizedNames: [LocalizedStringInput!]
+
+    "The name of this User Action Option."
+    name: String
+}
+
+input UserActionInput {
+    "The Id of the Email Template that is used when User Actions are canceled."
+    cancelEmailTemplateId : UUID
+
+    "The Id of the Email Template that is used when User Actions expired automatically (end)."
+    endEmailTemplateId: UUID
+
+    "The Id of the Email Template that is used when User Actions expired automatically (end)."
+    includeEmailInEventJSON: Boolean
+
+    "A mapping of localized names for this User Action. The key is the Locale and the value is the name of the User Action for that language."
+    localizedNames: [LocalizedStringInput!]
+
+    "The Id of the Email Template that is used when User Actions are modified."
+    modifyEmailTemplateId: UUID
+
+    "The name of this User Action."
+    name: String!
+
+    "The list of User Action Options."
+    options: [UserActionOptionInput]
+
+    "Defaults to false. Whether or not this User Action will prevent user login. When this value is set to true the action must also be marked as a time based action. See temporal."
+    preventLogin: Boolean
+
+    "Defaults to false. Whether or not FusionAuth will send events to any registered Webhooks when this User Action expires."
+    sendEndEvent : Boolean
+
+    "The Id of the Email Template that is used when User Actions are started (created)."
+    startEmailTemplateId: UUID
+
+    """Defaults to false. Whether or not this User Action is time-based (temporal). Time based actions are temporary and once expired the action will no longer be considered active and will not affect the user.
+
+An action that prevents login must be time based.
+
+Time based actions can still be applied to a user for an indefinite amount of time. A time based action is one that may be canceled or modified. A non time-based action may not be modified or canceled.
+
+An example of a non time-based action would be a reward, such as sending a user a coupon. This action cannot be canceled, or modified. When a non time-based action is taken, it is immediately complete and will show up in the user action history.
+"""
+    temporal: Boolean
+
+    "Defaults to false. Whether or not email is enabled for this User Action. If this is true, a checkbox will appear in the FusionAuth UI for this User Action that allows admins to specify that they want to email the User."
+    userEmailingEnabled: Boolean
+    "Defaults to false. Whether or not user notifications are enabled for this User Action. If this is true, a checkbox will appear in the FusionAuth UI for this User Action that allows admins to specify that they want to \"notify users\". What is does is send an additional flag named notifyUser in the event JSON that is sent to any registered Webhooks."
+    userNotificationsEnabled: Boolean
+}
+
+
+type UserActionOption {
+    "A mapping of localized names for this User Action Option. The key is the Locale and the value is the name of the User Action Option for that language."
+    localizedNames: [LocalizedString!]
+
+    "The name of this User Action Option."
+    name: String
+}
+
+type UserAction {
+    "The Id of the Email Template that is used when User Actions are canceled."
+    cancelEmailTemplateId : UUID
+    cancelEmailTemplate: EmailTemplate
+    "The Id of the Email Template that is used when User Actions expired automatically (end)."
+    endEmailTemplateId: UUID
+    endEmailTemplate: EmailTemplate
+
+    "The Id of the Email Template that is used when User Actions expired automatically (end)."
+    includeEmailInEventJSON: Boolean
+
+    "A mapping of localized names for this User Action. The key is the Locale and the value is the name of the User Action for that language."
+    localizedNames: [LocalizedString!]
+
+    "The Id of the Email Template that is used when User Actions are modified."
+    modifyEmailTemplateId: UUID
+    modifyEmailTemplate: EmailTemplate
+
+    "The name of this User Action."
+    name: String!
+
+    "The list of User Action Options."
+    options: [UserActionOption]
+
+    "Defaults to false. Whether or not this User Action will prevent user login. When this value is set to true the action must also be marked as a time based action. See temporal."
+    preventLogin: Boolean
+
+    "Defaults to false. Whether or not FusionAuth will send events to any registered Webhooks when this User Action expires."
+    sendEndEvent : Boolean
+
+    "The Id of the Email Template that is used when User Actions are started (created)."
+    startEmailTemplateId: UUID
+    startEmailTemplate: EmailTemplate
+
+    """Defaults to false. Whether or not this User Action is time-based (temporal). Time based actions are temporary and once expired the action will no longer be considered active and will not affect the user.
+
+    An action that prevents login must be time based.
+
+    Time based actions can still be applied to a user for an indefinite amount of time. A time based action is one that may be canceled or modified. A non time-based action may not be modified or canceled.
+
+    An example of a non time-based action would be a reward, such as sending a user a coupon. This action cannot be canceled, or modified. When a non time-based action is taken, it is immediately complete and will show up in the user action history.
+    """
+    temporal: Boolean
+
+    "Defaults to false. Whether or not email is enabled for this User Action. If this is true, a checkbox will appear in the FusionAuth UI for this User Action that allows admins to specify that they want to email the User."
+    userEmailingEnabled: Boolean
+    "Defaults to false. Whether or not user notifications are enabled for this User Action. If this is true, a checkbox will appear in the FusionAuth UI for this User Action that allows admins to specify that they want to \"notify users\". What is does is send an additional flag named notifyUser in the event JSON that is sent to any registered Webhooks."
+    userNotificationsEnabled: Boolean
+}
+
+extend type Mutation {
+    createUserAction(
+        "The Id to use for the new User Action. If not specified a secure random UUID will be generated"
+        userActionId: UUID,
+        input: UserActionInput!
+    ) : UserAction
+
+    updateUserAction(
+        "The Id of the User Action to update"
+        userActionId: UUID!,
+        input: UserActionInput!
+    ) : UserAction
+
+    deleteUserAction(
+        "The Id of the User Action to delete"
+        userActionId: UUID!,
+        hardDelete: Boolean
+    ) : Boolean
+
+    reactivateUserAction(
+        "The Id of the User Action to reactivate."
+        userActionId: UUID!) : UserAction
+}
+
+"A `UserAction` edge in the connection."
+type UserActionsEdge {
+    "A cursor for use in pagination."
+    cursor: Cursor
+    "The `UserAction` at the end of the edge."
+    node: UserAction
+}
+
+"A connection to a list of `UserAction` values."
+type UserActionsConnection {
+    "A list of edges which contains the `UserAction` and cursor to aid in pagination."
+    edges: [UserActionsEdge!]!
+    "A list of `UserAction` objects."
+    nodes: [UserAction]!
+    "Information to aid in pagination."
+    pageInfo: PageInfo!
+    "The count of *all* `UserAction` you could get from the connection."
+    totalCount: Int!
+}
+
+extend type Query {
+    userAction(userActionId: UUID!) : UserAction
+
+    "Reads and enables pagination through a set of `Collaborator`."
+    userActions(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int,
+    ): UserActionsConnection
 }
