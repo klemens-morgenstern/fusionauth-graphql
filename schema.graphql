@@ -165,8 +165,8 @@ input UserInput {
 }
 
 type TokenPair {
-    provider: String!
-    token: String!
+    provider: String
+    token: String
 }
 
 type UserMemberShip {
@@ -184,7 +184,7 @@ type UserMemberShip {
 
 type UserRegistration {
     "The Id of the Application that this registration is for."
-    applicationId: UUID!
+    applicationId: UUID
     "The Authentication Token for this registration (if one exists)."
     authenticationToken: String
 
@@ -193,25 +193,25 @@ type UserRegistration {
     "An object that can hold any information about the User for this registration that should be persisted."
     data: JSON
     "The Id of this registration."
-    id: UUID!
+    id: UUID
     "The instant that this registration was created."
-    insertInstant: Int!
+    insertInstant: Int
     "The instant that the User last logged into the Application for this registration."
-    lastLoginInstant: Int!
+    lastLoginInstant: Int
     "An array of locale strings that give, in order, the User’s preferred languages for this registration. These are important for email templates and other localizable text."
-    preferredLanguages: [Locale!]!
+    preferredLanguages: [Locale!]
     "The list of roles that the User has for this registration."
     roleNames : [String!]
-    roles: [Role!]!
+    roles: [Role!]
 
     "The User’s preferred timezone for this registration. The string will be in an IANA time zone format."
-    timezone: Timezone!
+    timezone: Timezone
     """A map that contains tokens returned from identity providers.
 
     For example, if this user has authenticated using the Facebook Identity Provider, the Facebook access token will be available in this map, keyed by name Facebook. For an OpenID Connect Identity provider, or other generic providers, if a token is stored it will be keyed by the Identity Provider unique Id."""
     tokens: [TokenPair!]
     "The username of the User for this registration only."
-    username: String!
+    username: String
     """The current status of the username. This is used if you are moderating usernames via CleanSpeak. The possible values are:
 
       * `ACTIVE` - the username is active
@@ -219,7 +219,7 @@ type UserRegistration {
       * `REJECTED` - the username was rejected during moderation
 
     If a username has been rejected, it is still possible to allow the User to update it and have the new one moderated again."""
-    usernameStatus: UsernameStatus!
+    usernameStatus: UsernameStatus
     "This value indicates if this User’s registration has been verified."
     verified: Boolean
 
@@ -231,64 +231,64 @@ type User {
     "True if the User is active. False if the User has been deactivated. Deactivated Users will not be able to login."
     active: Boolean!
     "The User’s birthdate formatted as YYYY-MM-DD"
-    birthDate: Date!
+    birthDate: Date
     "This Id is used by FusionAuth when the User’s username is sent to CleanSpeak to be moderated (filtered and potentially sent to the approval queue). It is the content Id of the username inside CleanSpeak."
     cleanSpeakId: UUID
 
     "An object that can hold any information about the User that should be persisted."
-    data: JSON!
+    data: JSON
     "The User’s email address."
-    email: String!
+    email: String
     "The expiration instant of the User’s account. An expired user is not permitted to login."
-    expiry: Int!
+    expiry: Int
 
     "The first name of the User."
-    firstName: String!
+    firstName: String
     "The User’s full name as a separate field that is not calculated from firstName and lastName."
-    fullname: String!
+    fullname: String
     "The User’s unique Id."
     id: UUID!
     "The URL that points to an image file that is the User’s profile image."
-    imageUrl: String!
+    imageUrl: String
     "The instant when user was created."
-    insertInstant: Int!
+    insertInstant: Int
     "The instant when the User logged in last."
-    lastLoginInstant: Int!
+    lastLoginInstant: Int
     "The User’s last name."
-    lastName: String!
+    lastName: String
     "The list of memberships for the User."
     memberships: [UserMemberShip!]
     "The User’s middle name."
-    middleName: String!
+    middleName: String
     "The User’s mobile phone number. This is useful is you will be sending push notifications or SMS messages to the User."
-    mobilePhone: String!
+    mobilePhone: String
     "The email address of the user’s parent or guardian. If this value was provided during a create or update operation, this value value will only remain until the child is claimed by a parent."
-    parentEmail: String!
+    parentEmail: String
     "Indicates that the User’s password needs to be changed during their next login attempt."
-    passwordChangeRequired: Boolean!
+    passwordChangeRequired: Boolean
     "The instant that the User last changed their password."
-    passwordLastUpdateInstant: Int!
+    passwordLastUpdateInstant: Int
     "An array of locale strings that give, in order, the User’s preferred languages. These are important for email templates and other localizable text."
-    preferredLanguages:  [Locale!]!
+    preferredLanguages:  [Locale!]
     "The list of registrations for the User."
     registrations: [UserRegistration!]
     "The Id of the Tenant that this User belongs to."
-    tenantId: UUID!
+    tenantId: UUID
 
     tenant: Tenant
     "The User’s preferred timezone. This can be used as a default to display instants, and it is recommended that you allow User’s to change this per-session. The string will be in an IANA time zone format."
-    timezone: Timezone!
+    timezone: Timezone
     """The User’s preferred delivery for verification codes during a two factor login request.
     The possible values are:
 
        * None
        * TextMessage
     """
-    twoFactorDelivery : TwoFactorDelivery!
+    twoFactorDelivery : TwoFactorDelivery
     "Determines if the User has two factor authentication enabled for their account or not."
-    twoFactorEnabled: Boolean!
+    twoFactorEnabled: Boolean
     "The username of the User."
-    username: String!
+    username: String
     """The current status of the username. This is used if you are moderating usernames via CleanSpeak. The possible values are:
 
       * `ACTIVE` - the username is active
@@ -296,15 +296,15 @@ type User {
       * `REJECTED` - the username was rejected during moderation
 
     If a username has been rejected, it is still possible to allow the User to update it and have the new one moderated again."""
-    usernameStatus: UsernameStatus!
+    usernameStatus: UsernameStatus
     "Whether or not the User’s email has been verified."
     verified: Boolean!
 }
 
 type UserResponse{
     "The access token, this string is an encoded JSON Web Token (JWT)."
-    token: String!
-    user: User!
+    token: String
+    user: User
 }
 
 type UserDeletionResponse {
@@ -643,9 +643,8 @@ input ActionInput {
 
 type ActionHistory {
     "The Id of the User that took the modified (or created) the User Action."
-    actionerUserId: UUID!
-
-    user: User
+    actionerUserId: UUID
+    actionerUser: User
 
     "An optional comment provided when the Action was created, updated or canceled."
     comment: String
@@ -660,33 +659,44 @@ type ActionHistory {
 
 type Action {
     "The Id of the User that was actioned."
-    actioneeUserId: UUID!
+    actioneeUserId: UUID
     actioneeUser: User
 
     "The Id of the User that took the action on the User. If the action was initiated by FusionAuth this value will not be provided."
-    actionerUserId: UUID!
+    actionerUserId: UUID
     actionerUser: User
 
     "This parameter if provided specifies the scope of the User  When an Action is scoped to one or more Applications the Application Ids will be provided in this parameter."
     applicationIds: [UUID!]
+    applications(
+        "Read all values in the set after (below) this cursor."
+        after: Cursor,
+        "Read all values in the set before (above) this cursor."
+        before: Cursor,
+        "Only read the first `n` values of the set."
+        first: Int,
+        "Only read the last `n` values of the set."
+        last: Int,
+        "Skip the first `n` values from our `after` cursor, an alternative to cursor based pagination. May not be used with `last`."
+        offset: Int) : ApplicationsConnection
 
     "An optional comment provided when the Action was created, updated or canceled. This value will always be the last comment set on the action, see history for previous values."
     comment: String
 
     "The instant that the User Action was taken."
-    createInstant: Int!
+    createInstant: Int
 
     "Whether FusionAuth will email the User when a time-based User Actions expires."
-    emailUserOnEnd: Boolean!
+    emailUserOnEnd: Boolean
 
     "Whether FusionAuth will send events when a time-based User Actions expires."
-    endEventSent: Boolean!
+    endEventSent: Boolean
 
     "The expiration instant of the User "
     expiry: Int
 
     "The Id of the User Action record."
-    id: UUID!
+    id: UUID
 
     "The historical data for the User Action Log. Each time the User Action is modified or when the User Action is canceled a new historyItem is recorded."
     history: [ActionHistory!]
@@ -698,7 +708,7 @@ type Action {
     localizedReason: String
 
     "Whether or not FusionAuth will send events to registered Webhooks when a time-based User Action expires."
-    notifyUserOnEnd: String!
+    notifyUserOnEnd: Boolean
 
     "The non-localized version of the User Action Option that was selected by the actioner."
     option: String
@@ -710,7 +720,7 @@ type Action {
     reasonCode: String
 
     "The unique Id of the User Action This Id can be used to retrieve the User Action using the Retrieve a User Action API."
-    userActionId: UUID!
+    userActionId: UUID
     userAction: UserAction
 }
 
@@ -986,8 +996,6 @@ input RegistrationDeletePolicyInput {
     unverified: RegistrationDeletePolicyUnverifiedInput
 }
 
-
-
 input RoleInput {
 
     "A description for the role."
@@ -1101,21 +1109,21 @@ type CleanSpeakConfigurationUsernameModeration {
 
 type JwtConfiguration {
     "The Id of the signing key used to sign the access token."
-    accessTokenId: UUID!
+    accessTokenId: UUID
     accessToken: Key
 
     "Defaults to false. Indicates if this application is using the JWT configuration defined here or the global JWT configuration defined by the System Configuration. If this is false the signing algorithm configured in the System Configuration will be used. If true the signing algorithm defined in this application will be used."
-    enabled: Boolean!
+    enabled: Boolean
 
     "The Id of the signing key used to sign the Id token."
-    idTokenKeyId: UUID!
+    idTokenKeyId: UUID
     idTokenKey: Key
 
     "The length of time in minutes the JWT refresh token will live before it is expired and is not able to be exchanged for a JWT. Required when enabled is set to true."
-    refreshTokenTimeToLiveInMinutes: Int!
+    refreshTokenTimeToLiveInMinutes: Int
 
     "The length of time in seconds the JWT will live before it is expired and no longer valid. Required when enabled is set to true."
-    timeToLiveInSeconds: Int!
+    timeToLiveInSeconds: Int
 }
 
 
@@ -1261,14 +1269,14 @@ type RegistrationConfiguration {
 
 type RegistrationDeletePolicyUnverified {
     " Defaults to false . Indicates that users without a verified registration for this application will have their registration permanently deleted after application.registrationDeletePolicy.unverified.numberOfDaysToRetain days."
-    enabled: Boolean!
+    enabled: Boolean
 
     "The number of days from registration a user’s registration will be retained before being deleted for not completing registration verification. This field is required when application.registrationDeletePolicy.enabled is set to true. Value must be greater than 0."
-    numberOfDaysToRetain: Int!
+    numberOfDaysToRetain: Int
 }
 
 type RegistrationDeletePolicy {
-    unverified: RegistrationDeletePolicyUnverified!
+    unverified: RegistrationDeletePolicyUnverified
 }
 
 type Role {
@@ -4642,29 +4650,29 @@ enum EmailSecurity {
 type RememberPreviousPasswords {
 
     "The number of previous passwords that should be remembered so they are not re-used by the User."
-    count: Int!
+    count: Int
 
     "Indicates that the remember previous password validation is enabled and being enforced."
-    enabled: Boolean!
+    enabled: Boolean
 }
 
 type PasswordValidationRules {
     "The maximum number of characters that are allowed for user passwords."
-    maxLength: Int!
+    maxLength: Int
 
     "The minimum number of characters that are required for user passwords."
-    minLength: Int!
+    minLength: Int
 
-    rememberPreviousPasswords: RememberPreviousPasswords!
+    rememberPreviousPasswords: RememberPreviousPasswords
 
     "Indicates that passwords require an uppercase and lowercase character to be valid."
-    requireMixedCase: Boolean!
+    requireMixedCase: Boolean
 
     "Indicates that passwords require a non-alphanumeric character to be valid."
-    requireNonAlpha: Boolean!
+    requireNonAlpha: Boolean
 
     "Indicates that passwords require at least one number to be valid."
-    requireNumber: Boolean!
+    requireNumber: Boolean
 }
 
 input EmailConfigurationInput {
@@ -4707,7 +4715,7 @@ input EmailConfigurationInput {
 }
 
 
-enum EventTransactionType {
+enum TransactionType {
     "No Webhooks are required to succeed for the FusionAuth transaction to be committed."
     NONE
     "Only a single Webhook is required to succeed for the FusionAuth transaction to be committed."
@@ -4726,7 +4734,7 @@ input EventMapEntryInput {
     enabled: Boolean
 
     "The transaction type that FusionAuth uses when sending these types of events to any configured Webhooks"
-    transactionType: EventTransactionType
+    transactionType: TransactionType
 }
 
 
@@ -4752,7 +4760,7 @@ input EventConfigurationInput {
       *jwt.refresh - When an access token is refreshed using a refresh token
       *jwt.refresh-token.revoke - When a JWT Refresh Token is revoked"""
 
-    events: [EventMapEntryInput!]
+    events: [EventMapEntryInput!]!
 }
 
 input ChangeGeneratorInput {
@@ -4763,7 +4771,7 @@ input ChangeGeneratorInput {
     length: Int
 
     "The type of the secure generator used for generating the change password Id."
-    type: DeviceUserCodeIdGeneratorType
+    type: SecureGeneratorType
 }
 
 input ExternalIdentifierConfigurationInput
@@ -4958,25 +4966,25 @@ input TenantInput {
 type EmailConfiguration {
 
     "Defaults to no-reply@fusionauth.io The default email address that emails will be sent from when a from address is not provided on an individual email template. This is the address part email address (i.e. Jared Dunn <jared@piedpiper.com>)."
-    defaultFromEmail: String!
+    defaultFromEmail: String
     "The default From Name used in sending emails when a from name is not provided on an individual email template. This is the display name part of the email address ( i.e. Jared Dunn <jared@piedpiper.com>)."
-    defaultFromName: String!
+    defaultFromName: String
     "The Id of the Email Template that is used when a user is sent a forgot password email."
-    forgotPasswordEmailTemplateId: UUID!
+    forgotPasswordEmailTemplateId: UUID
     forgotPasswordEmailTemplate: EmailTemplate
 
     "The host name of the SMTP server that FusionAuth will use."
-    host: String!
+    host: String
     "An optional password FusionAuth will use to authenticate with the SMTP server."
-    password: String!
+    password: String
     "The Id of the Passwordless Email Template."
     passwordlessEmailTemplateId: UUID
     passwordlessEmailTemplate: EmailTemplate
     !
     "The port of the SMTP server that FusionAuth will use."
-    port: Int!
+    port: Int
     "Additional Email Configuration in a properties file formatted String."
-    properties: String!
+    properties: String
 
     """Defaults to NONE.
     The type of security protocol FusionAuth will use when connecting to the SMTP server. The possible values are:
@@ -4984,22 +4992,22 @@ type EmailConfiguration {
     NONE - no security will be used. All communications will be sent plaintext.
     SSL - SSL will be used to connect to the SMTP server. This protocol is not recommended unless it is the only one your SMTP server supports.
     TLS - TLS will be used to connect to the SMTP server. This is the preferred protocol for all SMTP servers."""
-    security: EmailSecurity!
+    security: EmailSecurity
 
     "The Id of the Email Template that is used when a user had their account created for them and they must set their password manually and they are sent an email to set their password."
-    setPasswordEmailTemplateId: UUID!
+    setPasswordEmailTemplateId: UUID
     setPasswordEmailTemplate: EmailTemplate
 
     "An optional username FusionAuth will to authenticate with the SMTP server."
-    username: String!
+    username: String
     "The If of the Email Template that is used to send the verification emails to users. These emails are used to verify that a user’s email address is valid. If either the verifyEmail or verifyEmailWhenChanged fields are true this field is required."
-    verificationEmailTemplateId: UUID!
+    verificationEmailTemplateId: UUID
     verificationEmailTemplate: EmailTemplate
 
     "Defaults to false. Whether the user’s email addresses are verified when the registers with your application."
-    verifyEmail: Boolean!
+    verifyEmail: Boolean
     "Defaults to false. Whether the user’s email addresses are verified when the user changes them."
-    verifyEmailWhenChanged: Boolean!
+    verifyEmailWhenChanged: Boolean
 }
 
 type EventMapEntry {
@@ -5009,7 +5017,7 @@ type EventMapEntry {
     enabled: Boolean
 
     "The transaction type that FusionAuth uses when sending these types of events to any configured Webhooks"
-    transactionType: EventTransactionType
+    transactionType: TransactionType
 }
 
 
@@ -5038,9 +5046,9 @@ type EventConfiguration {
     events: [EventMapEntry!]
 }
 
-enum DeviceUserCodeIdGeneratorType {
+enum SecureGeneratorType {
     RANDOM_ALPHA
-    RANDOM_ALPHANUMERIC
+    RANDOM_ALPHA_NUMERIC
     RANDOM_BYTES
     RANDOM_DIGITS
 }
@@ -5053,7 +5061,7 @@ type ChangeGenerator {
     length: Int
 
     "The type of the secure generator used for generating the change password Id."
-    type: DeviceUserCodeIdGeneratorType
+    type: SecureGeneratorType
 }
 
 type ExternalIdentifierConfiguration
@@ -5061,39 +5069,39 @@ type ExternalIdentifierConfiguration
     """The time in seconds until a OAuth authorization code in no longer valid to be exchanged for an access token. This is essentially the time allowed between the start of an Authorization request during the Authorization code grant and when you request an access token using this authorization code on the Token endpoint.
 
     Value must be greater than 0 and less than or equal to 600."""
-    authorizationGrantIdTimeToLiveInSeconds: Int!
+    authorizationGrantIdTimeToLiveInSeconds: Int
 
-    changePasswordIdGenerator: ChangeGenerator!
+    changePasswordIdGenerator: ChangeGenerator
     "The time in seconds until a change password Id is no longer valid and cannot be used by the Change Password API. Value must be greater than 0."
-    changePasswordIdTimeToLiveInSeconds: Int!
+    changePasswordIdTimeToLiveInSeconds: Int
     "The time in seconds until a device code Id is no longer valid and cannot be used by the Token API. Value must be greater than 0."
-    deviceCodeTimeToLiveInSeconds: Int!
+    deviceCodeTimeToLiveInSeconds: Int
     "The length of the secure generator used for generating the device code Id."
 
-    deviceUserCodeIdGenerator: ChangeGenerator!
-    emailVerificationIdGenerator: ChangeGenerator!
+    deviceUserCodeIdGenerator: ChangeGenerator
+    emailVerificationIdGenerator: ChangeGenerator
     "The time in seconds until an external authentication Id is no longer valid and cannot be used by the Token API. Value must be greater than 0."
-    externalAuthenticationIdTimeToLiveInSeconds: Int!
+    externalAuthenticationIdTimeToLiveInSeconds: Int
 
     "The time in seconds until a One Time Password is no longer valid and cannot be used by the Login API. Value must be greater than 0."
-    oneTimePasswordTimeToLiveInSeconds: Int!
-    passwordlessLoginGenerator: ChangeGenerator!
+    oneTimePasswordTimeToLiveInSeconds: Int
+    passwordlessLoginGenerator: ChangeGenerator
 
-    registrationVerificationIdGenerator: ChangeGenerator!
+    registrationVerificationIdGenerator: ChangeGenerator
 
     "The time in seconds until a registration verification Id is no longer valid and cannot be used by the Verify Registration API. Value must be greater than 0."
-    registrationVerificationIdTimeToLiveInSeconds: Int!
+    registrationVerificationIdTimeToLiveInSeconds: Int
 
-    setupPasswordIdGenerator: ChangeGenerator!
+    setupPasswordIdGenerator: ChangeGenerator
 
     "The time in seconds until a setup password Id is no longer valid and cannot be used by the Change Password API. Value must be greater than 0."
-    setupPasswordIdTimeToLiveInSeconds: Int!
+    setupPasswordIdTimeToLiveInSeconds: Int
 
     "The time in seconds until a two factor Id is no longer valid and cannot be used by the Two Factor Login API. Value must be greater than 0."
-    twoFactorIdTimeToLiveInSeconds: Int!
+    twoFactorIdTimeToLiveInSeconds: Int
 
     "The time in seconds until an issued Two Factor trust Id is no longer valid and the User will be required to complete Two Factor authentication during the next authentication attempt. Value must be greater than 0."
-    twoFactorTrustIdTimeToLiveInSeconds: Int!
+    twoFactorTrustIdTimeToLiveInSeconds: Int
 }
 
 enum DurationUnit {
@@ -5107,10 +5115,10 @@ enum DurationUnit {
 
 type FailedAuthenticationConfiguration {
     "Defaults to 3. The duration of the User Action. This value along with the actionDurationUnit will be used to set the duration of the User Action. Value must be greater than 0."
-    actionDuration: Int!
+    actionDuration: Int
 
     "The unit of time associated with a duration. Defaults to MINUTES"
-    actionDurationUnit: DurationUnit!
+    actionDurationUnit: DurationUnit
 
     """Defaults to 60
 
@@ -5118,10 +5126,10 @@ type FailedAuthenticationConfiguration {
 
     For example, if tooManyAttempts is set to 5 and you fail to authenticate 4 times in a row, waiting for the duration specified here will cause your fifth attempt to start back at 1.
     """
-    resetCountInSeconds: Int!
+    resetCountInSeconds: Int
 
     "Defaults to 5. The number of failed attempts considered to be too many. Once this threshold is reached the specified User Action will be applied to the user for the duration specified. Value must be greater than 0."
-    tooManyAttempts: Int!
+    tooManyAttempts: Int
 
     "The Id of the User Action that is applied when the threshold is reached for too many failed authentication attempts."
     userActionId: UUID
@@ -5206,26 +5214,27 @@ type Tenant {
     data: JSON
 
     eventConfiguration: EventConfiguration
+    emailConfiguration: EmailConfiguration
     externalIdentifierConfiguration: ExternalIdentifierConfiguration
     failedAuthenticationConfiguration: FailedAuthenticationConfiguration
-    familyConfigurationInput: FamilyConfiguration
+    familyConfiguration: FamilyConfiguration
 
     "Default is 3600. Time in seconds until an inactive session will be invalidated. Used when creating a new session in the FusionAuth OAuth frontend."
     httpSessionMaxInactiveInterval: Int
 
     "The named issuer used to sign tokens, this is generally your public fully qualified domain."
-    issuer: String!
+    issuer: String
 
     "The unique identifier for this Tenant."
     id : UUID!
 
-    jwtConfiguration: JwtConfiguration!
+    jwtConfiguration: JwtConfiguration
 
     "The logout redirect URL when sending the user’s browser to the /oauth2/logout URI of the FusionAuth Front End. This value is only used when a logout URL is not defined in your Application."
-    logoutURL: String!
+    logoutURL: String
 
     "The password maximum age in days. The number of days after which FusionAuth will require a user to change their password. To disable pass null."
-    maximumPasswordAgeInDays: Int
+    maximumPasswordAge: Int
 
     "The password minimum age in seconds. When enabled FusionAuth will not allow a password to be changed until it reaches this minimum age. "
     minimumPasswordAge: Int
@@ -5238,8 +5247,9 @@ type Tenant {
     passwordValidationRules: PasswordValidationRules
 
     "The unique Id of the theme to be used to style the login page and other end user templates."
-    themeId: UUID!
+    themeId: UUID
     theme: Theme
+
     userDeletePolicy: RegistrationDeletePolicyUnverified
 }
 

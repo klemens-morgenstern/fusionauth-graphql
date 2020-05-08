@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "lib": ["es2018" , "dom"],
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "outDir": "lib",
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "target": "es2018",
+    "esModuleInterop": true,
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "preserveSymlinks" : true,
+  },
+  "compileOnSave": true,
+  "include": [
+    "*.ts"
+  ]
+}
